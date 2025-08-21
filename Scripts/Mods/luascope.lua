@@ -1,7 +1,10 @@
 LuaScope = LuaScope or {}
 
 System.LogAlways("Initializing LuaScope...")
+UIAction.RegisterEventSystemListener(LuaScope, "System", "OnGameplayStarted", "OnGameplayStarted")
+System.LogAlways("LuaScope: Registered OnGameplayStarted event listener.")
 
+local timerDuration = 900000
 local wrappedFunctions = {}
 local visitedObjects = {}
 local sampledParams = sampledParams or {}
@@ -284,6 +287,11 @@ local availableNamespaces = {
     "XGenAIModule"
 }
 
+function LuaScope.OnGameplayStarted(actionName, eventName, argTable)
+    LuaScope.Cmd()
+    Script.SetTimer(timerDuration, LuaScope.Dump)
+end
+
 --- <summary>
 --- Wraps a C function to log its arguments on each call.
 --- Prevents double-wrapping and stores the original function for restoration.
@@ -302,7 +310,7 @@ local function WrapCFunction(name, func)
 
         if not sampledParams[sigKey] then
             sampledParams[sigKey] = args
-            System.LogAlways(string.format("[Sampled Params] %s | first call paramCount: %d", name, #args))
+            System.LogAlways(string.format("[LuaScope] %s | first call paramCount: %d", name, #args))
         end
 
         return func(...)
@@ -375,7 +383,9 @@ end
 function LuaScope.Cmd(arg1)
     local name, obj
 
-    if not arg1 or arg1 == "" then
+    if currentTrackingNamespace and arg1 == currentTrackingNamespace then
+        System.LogAlways("[LuaScope] Already tracking: " .. tostring(arg1))
+    elseif not arg1 or arg1 == "" then
         local randomIndex = math.random(1, #availableNamespaces)
         name = availableNamespaces[randomIndex]
         System.LogAlways("[LuaScope] No namespace given, randomly selected: " .. name)
@@ -406,8 +416,13 @@ end
 --- Recursively prints tables and handles userdata.
 --- </summary>
 function LuaScope.Dump()
+    if not next(sampledParams) then
+        System.LogAlways("[LuaScope] No sampled parameters to display.")
+        Script.SetTimer(timerDuration, LuaScope.Dump)
+        return
+    end
     for sig, args in pairs(sampledParams) do
-        System.LogAlways(string.format("[LuaScope Dump] %s | paramCount: %d", sig, #args))
+        System.LogAlways(string.format("[LuaScope] %s | paramCount: %d", sig, #args))
 
         local function dumpTable(t, indent)
             indent = indent or 1
@@ -440,6 +455,7 @@ function LuaScope.Dump()
             System.LogAlways(string.format("  Param %d: %s", i, paramStr))
         end
     end
+    Script.SetTimer(timerDuration, LuaScope.Dump)
 end
 
 
