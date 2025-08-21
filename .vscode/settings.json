@@ -1,0 +1,11 @@
+{
+    "Lua.diagnostics.globals": [
+        "System",
+        "Script"
+    ],
+    "Lua.diagnostics.disable": [
+        "undefined-doc-name",
+        "undefined-field",
+        "undefined-global"
+    ]
+}
